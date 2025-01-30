@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from dotenv import load_dotenv
+from ..core.database import supabase
 
 
 load_dotenv()
@@ -17,22 +18,25 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """Genera un token JWT con los datos del usuario."""
-    to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
     """Verifica el JWT y extrae el usuario."""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        id: str = payload.get("sub")
+        id = int(id)
+        if id is None:
             raise HTTPException(status_code=401, detail="Token inválido")
-        return username
-    except jwt.PyJWTError:
+        
+        response = supabase.table("users").select("*").eq("id", id).execute()
+
+        if not response.data or len(response.data) == 0:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        return response.data[0]
+
+    except jwt.JWTError:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
 
 
@@ -49,8 +53,15 @@ def verify_password(password: str, hashed_password: str) -> bool:
 def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
     """Genera un JWT con los datos del usuario."""
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta if expires_delta else timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": expire})
+
+   
+    if "sub" in to_encode and not isinstance(to_encode["sub"], str):
+        to_encode["sub"] = str(to_encode["sub"])
+
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode["exp"] = expire  
+
+    
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -58,6 +69,17 @@ def decode_access_token(token: str) -> dict | None:
     """Verifica y decodifica el JWT."""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+       
         return payload
-    except JWTError:
+    except JWTError as e:
+        
+        return None
+    
+
+
+def get_projects(token: str = Depends(oauth2_scheme)):
+    response = supabase.table('projects').select("name").execute()
+    if response.data:
+        return response
+    else:
         return None
