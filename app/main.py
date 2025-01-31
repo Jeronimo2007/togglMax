@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import timedelta
-from app.models.ModelProjects import create_project
+from app.models.ModelProjects import create_project, delete_project
 from app.models.ModelUser import create_user, get_user
 from app.services.utils import get_current_user, create_access_token, decode_access_token, verify_password, get_projects
 
@@ -44,8 +44,13 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 
 
 @app.get("/users/me", status_code=status.HTTP_200_OK)
-async def read_current_user(user: dict = Depends(get_current_user)):
+async def read_current_user(user: dict = Depends(get_current_user), token: str = Depends(oauth2_scheme)):
     """Devuelve la información del usuario autenticado."""
+    payload = decode_access_token(token)
+   
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     return user
@@ -72,13 +77,32 @@ async def add_project(project_name: str, token: str = Depends(oauth2_scheme)):
     return {"message": "Proyecto creado exitosamente", "project": project}
 
 
-@app.post('/projects/get_projects')
-async def read_project(projects: dict = Depends(get_projects)):
+@app.get('/projects/get_projects')
+async def read_project(projects: dict = Depends(get_projects), token: str = Depends(oauth2_scheme)):
     """Buscar proyectos en la base de datos"""
+    payload = decode_access_token(token)
+   
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+
     if not projects:
         raise HTTPException(status_code=404,detail='sin proyectos encontrados')
     return projects
 
+
+
+@app.post("/projects/remove_project")
+def remove_project(name: str, token: str = Depends(oauth2_scheme)):
+    payload = decode_access_token(token)
+   
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+
+    response = delete_project(name)
+    if not response:
+        raise HTTPException(status_code=404,detail='proyecto ya eliminado o no existe')
+    
+    return "Eliminado correctamente"
 
 
 

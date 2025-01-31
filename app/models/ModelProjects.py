@@ -12,5 +12,12 @@ def create_project(name:str, id:int):
 
 
 
-def delete_project():
-    pass
+def delete_project(project_name:str):
+    response = supabase.table("projects").delete().eq("name", project_name).execute()
+
+    if response.data:
+        return response.data
+    else:
+        return None
+
+
