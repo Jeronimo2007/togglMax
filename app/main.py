@@ -1,9 +1,9 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, Query, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import timedelta
-from app.models.ModelProjects import create_project, delete_project
+from app.models.ModelProjects import create_project, delete_project, project_update
 from app.models.ModelUser import create_user, get_user
-from app.services.utils import get_current_user, create_access_token, decode_access_token, verify_password, get_projects
+from app.services.utils import get_current_user, create_access_token, decode_access_token, payload, verify_password, get_projects
 
 app = FastAPI()
 
@@ -18,7 +18,7 @@ async def root():
     return {"message": "Bienvenido a la API con Supabase"}
 
 
-@app.post("/users/", status_code=status.HTTP_201_CREATED)
+@app.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_user(username: str, password: str, adminRole: bool):
     """Registra un nuevo usuario con contraseña hasheada."""
     user = create_user(username, password, adminRole)
@@ -27,7 +27,7 @@ async def register_user(username: str, password: str, adminRole: bool):
     return {"message": "Usuario creado exitosamente"}
 
 
-@app.post("/login/")
+@app.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """Verifica credenciales y devuelve un token JWT."""
     user = get_user(form_data.username)
@@ -46,10 +46,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 @app.get("/users/me", status_code=status.HTTP_200_OK)
 async def read_current_user(user: dict = Depends(get_current_user), token: str = Depends(oauth2_scheme)):
     """Devuelve la información del usuario autenticado."""
-    payload = decode_access_token(token)
-   
-    if not payload:
-        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+    payload(token)
 
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
@@ -80,23 +77,28 @@ async def add_project(project_name: str, token: str = Depends(oauth2_scheme)):
 @app.get('/projects/get_projects')
 async def read_project(projects: dict = Depends(get_projects), token: str = Depends(oauth2_scheme)):
     """Buscar proyectos en la base de datos"""
-    payload = decode_access_token(token)
-   
-    if not payload:
-        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+    payload(token)
 
     if not projects:
         raise HTTPException(status_code=404,detail='sin proyectos encontrados')
     return projects
 
 
+@app.put('/projects/update')
+def update_project(project_name: str = Query(..., description="Nombre actual del proyecto"),
+                   new_name: str = Query(..., description="Nuevo nombre para el proyecto") ,
+                   token: str = Depends(oauth2_scheme)):
+    payload(token)
+    
+    response = project_update(project_name, new_name)
+
+    if not response:
+        raise HTTPException(status_code=404,detail='Proyecto no encontrado')
+
 
 @app.post("/projects/remove_project")
 def remove_project(name: str, token: str = Depends(oauth2_scheme)):
-    payload = decode_access_token(token)
-   
-    if not payload:
-        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+    payload(token)
 
     response = delete_project(name)
     if not response:
@@ -106,3 +108,6 @@ def remove_project(name: str, token: str = Depends(oauth2_scheme)):
 
 
 
+@app.post('/projects/add_member')
+async def add_member():
+    pass

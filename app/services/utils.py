@@ -83,3 +83,10 @@ def get_projects(token: str = Depends(oauth2_scheme)):
         return response
     else:
         return None
+    
+
+def payload(token):
+    payload = decode_access_token(token)
+   
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token inválido o expirado")
