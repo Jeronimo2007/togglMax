@@ -1,12 +1,12 @@
 from typing import Optional
-import bcrypt
 import os
 from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
 from dotenv import load_dotenv
 from ..core.database import supabase
+from jose import JWTError, jwt
+import bcrypt
 
 
 load_dotenv()
@@ -90,3 +90,37 @@ def payload(token):
    
     if not payload:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
+    
+
+def get_members(project_name: str):
+    
+    project_response = supabase.table("projects").select("id").eq("name", project_name).execute()
+    if not project_response.data:
+        return "no se pudo encontrar el proyecto"
+
+    project_id = project_response.data[0]["id"]
+
+    
+    members_response = supabase.table("projects_members").select("id_user", "admin_role").eq("id_proyecto", project_id).execute()
+    if not members_response.data:
+        return "no se encontraron miembros en el proyecto"
+
+    members_data = members_response.data
+
+    
+    user_ids = [member["id_user"] for member in members_data]
+    users_response = supabase.table("users").select("id", "username").in_("id", user_ids).execute()
+    if not users_response.data:
+        return "no se pudieron obtener los detalles de los usuarios"
+
+   
+    user_info = []
+    for member in members_data:
+        user = next((user for user in users_response.data if user["id"] == member["id_user"]), None)
+        if user:
+            user_info.append({
+                "username": user["username"],
+                "admin_role": member["admin_role"]
+            })
+
+    return user_info

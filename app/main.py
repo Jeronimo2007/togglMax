@@ -1,9 +1,9 @@
 from fastapi import FastAPI, HTTPException, Depends, Query, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import timedelta
-from app.models.ModelProjects import create_project, delete_project, project_update
+from app.models.ModelProjects import add_user_to_project, create_project, delete_member, delete_project, project_update
 from app.models.ModelUser import create_user, get_user
-from app.services.utils import get_current_user, create_access_token, decode_access_token, payload, verify_password, get_projects
+from app.services.utils import get_current_user, create_access_token, decode_access_token, get_members, payload, verify_password, get_projects
 
 app = FastAPI()
 
@@ -19,9 +19,9 @@ async def root():
 
 
 @app.post("/register", status_code=status.HTTP_201_CREATED)
-async def register_user(username: str, password: str, adminRole: bool):
+async def register_user(username: str, password: str):
     """Registra un nuevo usuario con contraseña hasheada."""
-    user = create_user(username, password, adminRole)
+    user = create_user(username, password)
     if not user:
         raise HTTPException(status_code=400, detail="No se pudo crear el usuario")
     return {"message": "Usuario creado exitosamente"}
@@ -94,9 +94,11 @@ def update_project(project_name: str = Query(..., description="Nombre actual del
 
     if not response:
         raise HTTPException(status_code=404,detail='Proyecto no encontrado')
+    
+    return "creado exitosamente: ", new_name
 
 
-@app.post("/projects/remove_project")
+@app.delete("/projects/remove_project")
 def remove_project(name: str, token: str = Depends(oauth2_scheme)):
     payload(token)
 
@@ -109,5 +111,46 @@ def remove_project(name: str, token: str = Depends(oauth2_scheme)):
 
 
 @app.post('/projects/add_member')
-async def add_member():
-    pass
+async def add_member(project_name: str = Query(..., description="Nombre actual del proyecto"),
+                   member_name: str = Query(..., description="Nombre de el usuario") ,
+                   token: str = Depends(oauth2_scheme)):
+    
+    payload(token)
+
+    response = add_user_to_project(project_name, member_name)
+    if not response:
+        raise HTTPException(status_code=404,detail='Usuario o proyecto no existente')
+    
+    return "agregado correctamente"
+
+
+@app.get('/projects/get_members')
+def read_members(project_name: str, token: str = Depends(oauth2_scheme)):
+    
+    payload(token)
+
+    response = get_members(project_name)
+
+    return response
+
+
+@app.delete('/projects/remove_member')
+def remove_member(project_name: str = Query(..., description="Nombre actual del proyecto"),
+                   member_name: str = Query(..., description="Nombre de el usuario") ,
+                   token: str = Depends(oauth2_scheme)):
+    
+    payload(token)
+
+
+    response = delete_member(project_name, member_name)
+
+
+    if not response:
+        raise HTTPException(status_code=404,detail='Usuario o proyecto no existente')
+    
+    return "eliminado exitosamente"
+
+
+
+
+

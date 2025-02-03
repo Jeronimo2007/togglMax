@@ -3,12 +3,11 @@ from ..core.database import supabase
 from ..services.utils import hash_password  
 
 
-def create_user(username: str, password: str, adminRole: bool):
+def create_user(username: str, password: str):
     hashed_password = hash_password(password)  
     response = supabase.table("users").insert({
         "username": username,
         "hashed_password": hashed_password,
-        "adminRole": adminRole
     }).execute()
     
     if response.data:
@@ -18,7 +17,7 @@ def create_user(username: str, password: str, adminRole: bool):
 
 def get_user(username: str):
     """ Obtiene los datos de un usuario por su username """
-    response = supabase.table("users").select("id,username, hashed_password, adminRole").eq("username", username).execute()
+    response = supabase.table("users").select("id,username, hashed_password").eq("username", username).execute()
     if response.data:
         return response.data[0]  
     else:
