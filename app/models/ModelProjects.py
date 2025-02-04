@@ -42,16 +42,20 @@ def project_update(project_name: str, new_project_name: str):
 
 
 def delete_project(project_name: str):
-    
+    # Obtener el id del proyecto
     project_response = supabase.table("projects").select("id").eq("name", project_name).execute()
-
     if not project_response.data:
         return None
 
     project_id = project_response.data[0]["id"]
 
     
-    supabase.table("projects_members").delete().eq("id_proyecto", project_id).execute()
+    members_response = supabase.table("projects_members").select("id_user").eq("id_proyecto", project_id).execute()
+    if members_response.data:
+        user_ids = [member["id_user"] for member in members_response.data]
+
+        
+        supabase.table("projects_members").delete().eq("id_proyecto", project_id).execute()
 
     
     response = supabase.table("projects").delete().eq("id", project_id).execute()

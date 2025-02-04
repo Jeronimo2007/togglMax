@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends, Query, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import timedelta
 from app.models.ModelProjects import add_user_to_project, create_project, delete_member, delete_project, project_update
+from app.models.ModelTaks import add_task
 from app.models.ModelUser import create_user, get_user
 from app.services.utils import get_current_user, create_access_token, decode_access_token, get_members, payload, verify_password, get_projects
 
@@ -152,5 +153,20 @@ def remove_member(project_name: str = Query(..., description="Nombre actual del 
 
 
 
+@app.post('/task/create')
+def create_task(
+    project_name: str, 
+    user_name: str, 
+    title: str, 
+    description: str, 
+    token: str = Depends(oauth2_scheme)
+):
+    
+    current_user = get_current_user(token)
 
+    
+    response = add_task(project_name, user_name, title, description, current_user)
+
+    return response
+    
 
