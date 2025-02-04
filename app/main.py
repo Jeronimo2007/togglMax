@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends, Query, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import timedelta
 from app.models.ModelProjects import add_user_to_project, create_project, delete_member, delete_project, project_update
-from app.models.ModelTaks import add_task
+from app.models.ModelTaks import add_task, delete_task, get_task_details, update_task
 from app.models.ModelUser import create_user, get_user
 from app.services.utils import get_current_user, create_access_token, decode_access_token, get_members, payload, verify_password, get_projects
 
@@ -168,5 +168,41 @@ def create_task(
     response = add_task(project_name, user_name, title, description, current_user)
 
     return response
+
+
+
+@app.get('/task/read')
+def get_task(project_name:str = Query(..., description='titulo de la proyecto'), token: str = Depends(oauth2_scheme)):
+
+    payload(token)
+
+    current_user = get_current_user(token)
+
+    response = get_task_details(project_name, current_user)
+
+    return response
+
+
+@app.put('/task/update')
+def change_title_or_description(project_name: str, task_id: int,title: str = None, description: str = None,token: str = Depends(oauth2_scheme)):
     
+    payload(token)
+
+    current_user = get_current_user(token)
+
+    response = update_task(project_name,task_id,current_user ,title, description)
+
+    return response
+
+@app.delete('/task/remove_task')
+def remove_task(project_name: str, task_id: int,token: str = Depends(oauth2_scheme)):
+
+    payload(token)
+
+    current_user = get_current_user(token)
+
+    response = delete_task(project_name, task_id, current_user)
+
+    return response
+
 

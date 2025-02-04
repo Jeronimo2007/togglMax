@@ -124,3 +124,26 @@ def get_members(project_name: str):
             })
 
     return user_info
+
+
+
+
+def get_project_id(project_name: str):
+    response = supabase.table('projects').select('id').eq('name', project_name).execute()
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    return response.data[0]['id']
+
+
+
+def get_current_user_id(current_user: dict):
+    return current_user['id']
+
+
+def get_user_id(user_name: str):
+    response = supabase.table('users').select('id').eq('username', user_name).execute()
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return response.data[0]['id']
+
+
