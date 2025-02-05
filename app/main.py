@@ -1,15 +1,25 @@
-from fastapi import FastAPI, HTTPException, Depends, Query, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from datetime import timedelta
-from app.models.ModelProjects import add_user_to_project, create_project, delete_member, delete_project, project_update
-from app.models.ModelTaks import add_task, delete_task, get_task_details, update_task
-from app.models.ModelUser import create_user, get_user
-from app.services.utils import get_current_user, create_access_token, decode_access_token, get_members, payload, verify_password, get_projects
+from fastapi import FastAPI, status
+from fastapi.middleware.cors import CORSMiddleware
+from app.routes import auth, projects, tasks
+
 
 app = FastAPI()
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+
+
+app.include_router(auth.router)
+app.include_router(projects.router)
+app.include_router(tasks.router)
 
 
 
@@ -19,190 +29,6 @@ async def root():
     return {"message": "Bienvenido a la API con Supabase"}
 
 
-@app.post("/register", status_code=status.HTTP_201_CREATED)
-async def register_user(username: str, password: str):
-    """Registra un nuevo usuario con contraseña hasheada."""
-    user = create_user(username, password)
-    if not user:
-        raise HTTPException(status_code=400, detail="No se pudo crear el usuario")
-    return {"message": "Usuario creado exitosamente"}
 
-
-@app.post("/login")
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    """Verifica credenciales y devuelve un token JWT."""
-    user = get_user(form_data.username)
-    if not user or not verify_password(form_data.password, user["hashed_password"]):
-        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
-
-    
-    access_token = create_access_token(
-        data={"sub": user["id"]},  
-        expires_delta=timedelta(minutes=60)
-    )
-
-    return {"access_token": access_token, "token_type": "bearer"}
-
-
-@app.get("/users/me", status_code=status.HTTP_200_OK)
-async def read_current_user(user: dict = Depends(get_current_user), token: str = Depends(oauth2_scheme)):
-    """Devuelve la información del usuario autenticado."""
-    payload(token)
-
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    return user
-
-
-@app.post("/projects/add")
-async def add_project(project_name: str, token: str = Depends(oauth2_scheme)):
-    """Crea un proyecto y asigna el usuario autenticado como propietario."""
-    
-    payload = decode_access_token(token)
-   
-    if not payload:
-        raise HTTPException(status_code=401, detail="Token inválido o expirado")
-
-    user_id = int(payload.get("sub"))
-
-    if not user_id:
-        raise HTTPException(status_code=400, detail="ID de usuario no encontrado en el token")
-
-    project = create_project(project_name, user_id)
-    if not project:
-        raise HTTPException(status_code=400, detail="No se pudo crear el proyecto")
-
-    return {"message": "Proyecto creado exitosamente", "project": project}
-
-
-@app.get('/projects/get_projects')
-async def read_project(projects: dict = Depends(get_projects), token: str = Depends(oauth2_scheme)):
-    """Buscar proyectos en la base de datos"""
-    payload(token)
-
-    if not projects:
-        raise HTTPException(status_code=404,detail='sin proyectos encontrados')
-    return projects
-
-
-@app.put('/projects/update')
-def update_project(project_name: str = Query(..., description="Nombre actual del proyecto"),
-                   new_name: str = Query(..., description="Nuevo nombre para el proyecto") ,
-                   token: str = Depends(oauth2_scheme)):
-    payload(token)
-    
-    response = project_update(project_name, new_name)
-
-    if not response:
-        raise HTTPException(status_code=404,detail='Proyecto no encontrado')
-    
-    return "creado exitosamente: ", new_name
-
-
-@app.delete("/projects/remove_project")
-def remove_project(name: str, token: str = Depends(oauth2_scheme)):
-    payload(token)
-
-    response = delete_project(name)
-    if not response:
-        raise HTTPException(status_code=404,detail='proyecto ya eliminado o no existe')
-    
-    return "Eliminado correctamente"
-
-
-
-@app.post('/projects/add_member')
-async def add_member(project_name: str = Query(..., description="Nombre actual del proyecto"),
-                   member_name: str = Query(..., description="Nombre de el usuario") ,
-                   token: str = Depends(oauth2_scheme)):
-    
-    payload(token)
-
-    response = add_user_to_project(project_name, member_name)
-    if not response:
-        raise HTTPException(status_code=404,detail='Usuario o proyecto no existente')
-    
-    return "agregado correctamente"
-
-
-@app.get('/projects/get_members')
-def read_members(project_name: str, token: str = Depends(oauth2_scheme)):
-    
-    payload(token)
-
-    response = get_members(project_name)
-
-    return response
-
-
-@app.delete('/projects/remove_member')
-def remove_member(project_name: str = Query(..., description="Nombre actual del proyecto"),
-                   member_name: str = Query(..., description="Nombre de el usuario") ,
-                   token: str = Depends(oauth2_scheme)):
-    
-    payload(token)
-
-
-    response = delete_member(project_name, member_name)
-
-
-    if not response:
-        raise HTTPException(status_code=404,detail='Usuario o proyecto no existente')
-    
-    return "eliminado exitosamente"
-
-
-
-@app.post('/task/create')
-def create_task(
-    project_name: str, 
-    user_name: str, 
-    title: str, 
-    description: str, 
-    token: str = Depends(oauth2_scheme)
-):
-    
-    current_user = get_current_user(token)
-
-    
-    response = add_task(project_name, user_name, title, description, current_user)
-
-    return response
-
-
-
-@app.get('/task/read')
-def get_task(project_name:str = Query(..., description='titulo de la proyecto'), token: str = Depends(oauth2_scheme)):
-
-    payload(token)
-
-    current_user = get_current_user(token)
-
-    response = get_task_details(project_name, current_user)
-
-    return response
-
-
-@app.put('/task/update')
-def change_title_or_description(project_name: str, task_id: int,title: str = None, description: str = None,token: str = Depends(oauth2_scheme)):
-    
-    payload(token)
-
-    current_user = get_current_user(token)
-
-    response = update_task(project_name,task_id,current_user ,title, description)
-
-    return response
-
-@app.delete('/task/remove_task')
-def remove_task(project_name: str, task_id: int,token: str = Depends(oauth2_scheme)):
-
-    payload(token)
-
-    current_user = get_current_user(token)
-
-    response = delete_task(project_name, task_id, current_user)
-
-    return response
 
 
