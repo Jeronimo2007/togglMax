@@ -26,7 +26,7 @@ app.include_router(tasks.router)
 @app.get("/", status_code=status.HTTP_200_OK)
 async def root():
     """Ruta principal de bienvenida"""
-    return {"message": "Bienvenido a la API con Supabase"}
+    return {"message": "hello world"}
 
 
 

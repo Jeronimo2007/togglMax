@@ -1,0 +1,5 @@
+fastapi==0.115.8
+python-dotenv==1.0.1
+python_bcrypt==0.3.2
+python_jose==3.3.0
+supabase==2.13.0
