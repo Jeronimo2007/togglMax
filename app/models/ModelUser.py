@@ -1,6 +1,6 @@
 from supabase import Client
 from ..core.database import supabase  
-from ..services.utils import hash_password  
+from app.services.utils import hash_password
 
 
 def create_user(username: str, password: str):
