@@ -1,6 +1,6 @@
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import auth
+from app.routes import auth, eventsRouter
 
 
 app = FastAPI()
@@ -18,6 +18,7 @@ app.add_middleware(
 
 
 app.include_router(auth.router)
+app.include_router(eventsRouter.router)
 
 @app.get("/", status_code=status.HTTP_200_OK)
 async def root():
