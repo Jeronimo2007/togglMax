@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends,status,Query, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from app.models.ModelUser import create_user, get_user
 from app.services.utils import create_access_token, get_current_user, payload, verify_password
-
+from pydantic import BaseModel
 
 
 
@@ -14,9 +14,18 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
 
 
 
+class UserCreate(BaseModel):
+    username: str
+    password: str
+
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register_user(username: str, password: str):
+async def register_user(user_data: UserCreate):
     """Registra un nuevo usuario con contraseña hasheada."""
+    # Acceder a los datos desde el modelo UserCreate
+    username = user_data.username
+    password = user_data.password
+    
     user = create_user(username, password)
     if not user:
         raise HTTPException(status_code=400, detail="No se pudo crear el usuario")
