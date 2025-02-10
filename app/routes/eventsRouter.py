@@ -1,49 +1,83 @@
 from datetime import datetime, timedelta
-from ..services.utils import get_current_user, payload
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from ..models import modelEvent
+from pydantic import BaseModel
+from typing import Optional
 
+from ..services.utils import get_current_user, payload
+from ..models import modelEvent
 
 router = APIRouter(prefix="/event", tags=["events"])
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
 
+class EventCreate(BaseModel):
+    project: str
+    descripcion: str
+    duracion: float
 
+class ManualEventCreate(BaseModel):
+    project: str
+    descripcion: str
+    fecha_inicio: datetime
+    fecha_fin: datetime
 
 @router.post("/eventos/")
-async def crear_evento(descripcion: str, duracion: float,token: str = Depends(oauth2_scheme)):
-
-    payload(token)
-
-    user = get_current_user(token)
-    user_id = user["id"]
-    
+async def crear_evento(data: EventCreate, token: str = Depends(oauth2_scheme)):
+    """
+    Recibe un evento con el formato JSON correcto y lo guarda en la base de datos.
+    """
+    user_data = payload(token)  # Validar token y obtener usuario autenticado
 
     fecha_inicio = datetime.utcnow()  # Fecha cuando empieza el temporizador
-    fecha_fin = fecha_inicio + timedelta(seconds=duracion)  # Fecha de fin del temporizador
-    response = modelEvent.crear_evento(descripcion, duracion, fecha_inicio, fecha_fin, user_id)
+    fecha_fin = fecha_inicio + timedelta(seconds=data.duracion)  # Fecha de fin del temporizador
 
-    return response
+    response = modelEvent.crear_evento(data.descripcion, data.duracion, fecha_inicio, fecha_fin, data.project)
 
+    return {"status": "success", "message": "Evento creado exitosamente", "data": response}
+
+@router.post("/eventos/manual/")
+async def crear_evento_manual(data: ManualEventCreate, token: str = Depends(oauth2_scheme)):
+    """
+    Crea un evento con fechas de inicio y fin específicas.
+    """
+    user_data = payload(token)  # Validar token y obtener usuario autenticado
+
+    # Calcular la duración en segundos
+    duracion = (data.fecha_fin - data.fecha_inicio).total_seconds()
+
+    if duracion <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="La fecha de fin debe ser posterior a la fecha de inicio"
+        )
+
+    response = modelEvent.crear_evento(
+        data.descripcion,
+        duracion,
+        data.fecha_inicio,
+        data.fecha_fin,
+        data.project
+    )
+
+    return {"status": "success", "message": "Evento manual creado exitosamente", "data": response}
 
 @router.get("/eventos/")
 async def obtener_eventos(token: str = Depends(oauth2_scheme)):
-    payload(token)
+    """
+    Obtiene todos los eventos del usuario autenticado.
+    """
+    payload(token)  # Validar token
     response = modelEvent.obtener_eventos()
-    return response
+    return {"status": "success", "message": "Eventos obtenidos exitosamente", "data": response}
 
-    
 @router.delete("/eventos/{event_id}/")
 async def eliminar_evento(event_id: int, token: str = Depends(oauth2_scheme)):
-    payload(token)
+    """
+    Elimina un evento específico si pertenece al usuario autenticado.
+    """
     user = get_current_user(token)
     user_id = user["id"]
 
     response = modelEvent.remove_evento(event_id, user_id)
-    return response
-
-
-
-
-
+    return {"status": "success", "message": "Evento eliminado correctamente", "data": response}
