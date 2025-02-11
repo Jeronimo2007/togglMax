@@ -1,21 +1,17 @@
-FROM python:3.11
+# Usa una imagen ligera de Python
+FROM python:3.10-slim
 
-WORKDIR /gestor
+# Define el directorio de trabajo dentro del contenedor
+WORKDIR /app
 
-# Copy requirements first to leverage Docker cache
-COPY requirements.txt .
-
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the rest of the application
+# Copia los archivos del backend al contenedor
 COPY . .
 
-# Expose the port the app runs on
+# Instala las dependencias necesarias
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Expone el puerto 8000 para FastAPI
 EXPOSE 8000
 
-# Install uvicorn explicitly
-RUN pip install uvicorn python-multipart
-
-# Command to run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Comando para ejecutar el backend con Uvicorn
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
