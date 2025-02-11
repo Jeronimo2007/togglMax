@@ -6,16 +6,12 @@ from app.routes import auth, eventsRouter, projects, reportRouter
 app = FastAPI()
 
 
-origins = [
-    "https://toggl-max-front-9dx01wr3u-jeronimos-projects-6a3da6cd.vercel.app",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # Permitir cualquier origen
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Permitir todos los métodos (GET, POST, etc.)
+    allow_headers=["*"],  # Permitir todos los headers
 )
 
 
