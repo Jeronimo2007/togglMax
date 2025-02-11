@@ -27,10 +27,10 @@ async def crear_evento(data: EventCreate, token: str = Depends(oauth2_scheme)):
     """
     Recibe un evento con el formato JSON correcto y lo guarda en la base de datos.
     """
-    user_data = payload(token)  # Validar token y obtener usuario autenticado
+    user_data = payload(token)  
 
-    fecha_inicio = datetime.utcnow()  # Fecha cuando empieza el temporizador
-    fecha_fin = fecha_inicio + timedelta(seconds=data.duracion)  # Fecha de fin del temporizador
+    fecha_inicio = datetime.utcnow()  
+    fecha_fin = fecha_inicio + timedelta(seconds=data.duracion) 
 
     response = modelEvent.crear_evento(data.descripcion, data.duracion, fecha_inicio, fecha_fin, data.project)
 
@@ -41,9 +41,9 @@ async def crear_evento_manual(data: ManualEventCreate, token: str = Depends(oaut
     """
     Crea un evento con fechas de inicio y fin específicas.
     """
-    user_data = payload(token)  # Validar token y obtener usuario autenticado
+    user_data = payload(token)  
 
-    # Calcular la duración en segundos
+    
     duracion = (data.fecha_fin - data.fecha_inicio).total_seconds()
 
     if duracion <= 0:

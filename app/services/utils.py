@@ -86,7 +86,7 @@ def get_projects(token: str = Depends(oauth2_scheme)):
 
 def payload(token: str):
     """ Decodifica el token y obtiene el usuario autenticado """
-    user_data = get_current_user(token)  # Usa get_current_user para obtener datos
+    user_data = get_current_user(token)  
     if not user_data:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
     return user_data

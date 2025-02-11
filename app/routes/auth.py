@@ -22,7 +22,7 @@ class UserCreate(BaseModel):
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_user(user_data: UserCreate):
     """Registra un nuevo usuario con contraseña hasheada."""
-    # Acceder a los datos desde el modelo UserCreate
+    
     username = user_data.username
     password = user_data.password
     

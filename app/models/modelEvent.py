@@ -36,17 +36,17 @@ def obtener_eventos():
 
         eventos = response.data
 
-        # 🔹 Convertir fechas correctamente
+       
         for evento in eventos:
             try:
-                # Remover microsegundos si están presentes
+                
                 if "." in evento["fecha_inicio"]:
                     evento["fecha_inicio"] = evento["fecha_inicio"].split(".")[0]
 
                 if "." in evento["fecha_fin"]:
                     evento["fecha_fin"] = evento["fecha_fin"].split(".")[0]
 
-                # Convertir a formato ISO 8601 estándar
+                
                 evento["fecha_inicio"] = datetime.fromisoformat(evento["fecha_inicio"]).isoformat() + "Z"
                 evento["fecha_fin"] = datetime.fromisoformat(evento["fecha_fin"]).isoformat() + "Z"
 
@@ -62,7 +62,7 @@ def obtener_eventos():
 
 def remove_evento(event_id: int, user_id: int):
     try:
-        # Verificar si el evento pertenece al usuario
+       
         response = supabase.table("eventos").select("user_id").eq("id", event_id).execute()
 
         if not response.data:
@@ -71,7 +71,7 @@ def remove_evento(event_id: int, user_id: int):
         if response.data[0]["user_id"] != user_id:
             raise ValueError("No tienes permiso para eliminar este evento")
 
-        # Eliminar el evento
+       
         supabase.table("eventos").delete().eq("id", event_id).execute()
         
         return {"message": "Evento eliminado correctamente"}
