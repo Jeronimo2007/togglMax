@@ -28,11 +28,19 @@ async def crear_evento(data: EventCreate, token: str = Depends(oauth2_scheme)):
     Recibe un evento con el formato JSON correcto y lo guarda en la base de datos.
     """
     user_data = payload(token)  
+    user_id = user_data["id"]
 
     fecha_inicio = datetime.utcnow()  
     fecha_fin = fecha_inicio + timedelta(seconds=data.duracion) 
 
-    response = modelEvent.crear_evento(data.descripcion, data.duracion, fecha_inicio, fecha_fin, data.project)
+    response = modelEvent.crear_evento(
+        data.descripcion, 
+        data.duracion, 
+        fecha_inicio, 
+        fecha_fin, 
+        data.project,
+        user_id
+    )
 
     return {"status": "success", "message": "Evento creado exitosamente", "data": response}
 
@@ -42,8 +50,8 @@ async def crear_evento_manual(data: ManualEventCreate, token: str = Depends(oaut
     Crea un evento con fechas de inicio y fin específicas.
     """
     user_data = payload(token)  
+    user_id = user_data["id"]
 
-    
     duracion = (data.fecha_fin - data.fecha_inicio).total_seconds()
 
     if duracion <= 0:
@@ -57,7 +65,8 @@ async def crear_evento_manual(data: ManualEventCreate, token: str = Depends(oaut
         duracion,
         data.fecha_inicio,
         data.fecha_fin,
-        data.project
+        data.project,
+        user_id
     )
 
     return {"status": "success", "message": "Evento manual creado exitosamente", "data": response}
@@ -67,8 +76,9 @@ async def obtener_eventos(token: str = Depends(oauth2_scheme)):
     """
     Obtiene todos los eventos del usuario autenticado.
     """
-    payload(token)  # Validar token
-    response = modelEvent.obtener_eventos()
+    user_data = payload(token)
+    user_id = user_data["id"]
+    response = modelEvent.obtener_eventos(user_id)
     return {"status": "success", "message": "Eventos obtenidos exitosamente", "data": response}
 
 @router.delete("/eventos/{event_id}/")

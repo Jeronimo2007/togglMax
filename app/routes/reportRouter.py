@@ -14,7 +14,6 @@ class ReportRequest(BaseModel):
     @validator('start', 'end')
     def validate_date_format(cls, v):
         try:
-            
             if not v or len(v.split('-')) != 3:
                 raise ValueError("Formato de fecha inválido")
             
@@ -47,26 +46,31 @@ class ReportRequest(BaseModel):
 @router.post("/get")
 async def obtener_reporte(
     request: ReportRequest,
-    token: str = Depends(payload)
+    user_data: Dict = Depends(payload)
 ) -> Dict[str, Any]:
     """
-    Obtiene el reporte de tiempo trabajado en un rango de fechas.
+    Obtiene el reporte de tiempo trabajado en un rango de fechas para el usuario actual.
 
     Args:
         request: ReportRequest con fechas inicio y fin en formato YYYY-MM-DD
-        token: Token de autenticación
+        user_data: Datos del usuario autenticado
 
     Returns:
         Dict con status, message, data (eventos) y summary (resumen por proyecto)
     """
     try:
-       
+        # Verificar que tenemos el ID del usuario
+        if not user_data or 'id' not in user_data:
+            raise HTTPException(status_code=401, detail="Usuario no autenticado")
+
+        user_id = user_data['id']
         start_date = datetime.strptime(request.start, "%Y-%m-%d").date()
         end_date = datetime.strptime(request.end, "%Y-%m-%d").date()
 
-       
+        # Consulta filtrada por usuario y fechas
         response = supabase.table("eventos")\
             .select("id, descripcion, duracion, fecha_inicio, fecha_fin, project")\
+            .eq("user_id", user_id)\
             .gte("fecha_inicio", start_date.isoformat())\
             .lte("fecha_inicio", end_date.isoformat())\
             .execute()
@@ -79,7 +83,7 @@ async def obtener_reporte(
                 "summary": []
             }
 
-        
+        # Calcular resumen por proyecto
         resumen_proyectos = {}
         for evento in response.data:
             project = evento.get("project")
@@ -105,6 +109,7 @@ async def obtener_reporte(
             detail=str(ve)
         )
     except Exception as e:
+        print(f"❌ Error en obtener_reporte: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Error interno del servidor: {str(e)}"
