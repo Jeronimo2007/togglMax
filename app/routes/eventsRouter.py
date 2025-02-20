@@ -13,20 +13,18 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
 
 class EventCreate(BaseModel):
     project: str
-    descripcion: str
+    descripcion: Optional[str] = None  
     duracion: float
 
 class ManualEventCreate(BaseModel):
     project: str
-    descripcion: str
+    descripcion: Optional[str] = None  
     fecha_inicio: datetime
     fecha_fin: datetime
 
 @router.post("/eventos/")
 async def crear_evento(data: EventCreate, token: str = Depends(oauth2_scheme)):
-    """
-    Recibe un evento con el formato JSON correcto y lo guarda en la base de datos.
-    """
+    
     user_data = payload(token)  
     user_id = user_data["id"]
 
@@ -46,9 +44,7 @@ async def crear_evento(data: EventCreate, token: str = Depends(oauth2_scheme)):
 
 @router.post("/eventos/manual/")
 async def crear_evento_manual(data: ManualEventCreate, token: str = Depends(oauth2_scheme)):
-    """
-    Crea un evento con fechas de inicio y fin específicas.
-    """
+    
     user_data = payload(token)  
     user_id = user_data["id"]
 
@@ -73,19 +69,22 @@ async def crear_evento_manual(data: ManualEventCreate, token: str = Depends(oaut
 
 @router.get("/eventos/")
 async def obtener_eventos(token: str = Depends(oauth2_scheme)):
-    """
-    Obtiene todos los eventos del usuario autenticado.
-    """
+    
     user_data = payload(token)
     user_id = user_data["id"]
     response = modelEvent.obtener_eventos(user_id)
+
+    
+    for evento in response:
+        
+        bill = modelEvent.get_project_bill(evento['project'])
+        evento['bill'] = bill
+
     return {"status": "success", "message": "Eventos obtenidos exitosamente", "data": response}
 
 @router.delete("/eventos/{event_id}/")
 async def eliminar_evento(event_id: int, token: str = Depends(oauth2_scheme)):
-    """
-    Elimina un evento específico si pertenece al usuario autenticado.
-    """
+    
     user = get_current_user(token)
     user_id = user["id"]
 

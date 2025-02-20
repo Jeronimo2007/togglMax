@@ -9,6 +9,9 @@ def crear_evento(descripcion: str, duracion: float, fecha_inicio: datetime,
     Crea un nuevo evento en la base de datos asociado directamente al usuario.
     """
     try:
+        
+        
+
         data = {
             "descripcion": descripcion,
             "duracion": duracion,
@@ -36,7 +39,7 @@ def obtener_eventos(user_id: int) -> List[Dict[str, Any]]:
     try:
         print(f"🔍 Buscando eventos para usuario {user_id}")
         
-        # Obtenemos eventos directamente por user_id
+        
         eventos_response = (
             supabase.table('eventos')
             .select("*")
@@ -51,7 +54,7 @@ def obtener_eventos(user_id: int) -> List[Dict[str, Any]]:
         eventos = eventos_response.data
         print(f"✅ Eventos encontrados: {len(eventos)}")
 
-        # Procesamos las fechas si existen
+        
         for evento in eventos:
             if "fecha_inicio" in evento and "fecha_fin" in evento:
                 try:
@@ -71,6 +74,27 @@ def obtener_eventos(user_id: int) -> List[Dict[str, Any]]:
         print(f"❌ Error en obtener_eventos: {str(e)}")
         raise ValueError(f"Error al obtener eventos: {str(e)}")
 
+def get_project_bill(project: str) -> int:
+    """
+    Obtiene el valor de bill para un proyecto específico.
+    """
+    try:
+        response = (
+            supabase.table('togglProjects')
+            .select("bill")
+            .eq("name", project)
+            .execute()
+        )
+
+        if not response.data:
+            raise ValueError("No se encontró el proyecto o no tiene un bill asignado")
+
+        return response.data[0]['bill']
+
+    except Exception as e:
+        print(f"❌ Error en get_project_bill: {str(e)}")
+        raise ValueError(f"Error al obtener el bill del proyecto: {str(e)}")
+
 def remove_evento(event_id: int, user_id: int) -> Dict[str, Any]:
     """
     Elimina un evento específico verificando que pertenezca al usuario.
@@ -89,7 +113,7 @@ def remove_evento(event_id: int, user_id: int) -> Dict[str, Any]:
     try:
         print(f"🗑️ Intentando eliminar evento {event_id} para usuario {user_id}")
         
-        # Primero verificamos que el evento exista y pertenezca al usuario
+        
         verificacion = (
             supabase.table('eventos')
             .select("*")
@@ -107,10 +131,10 @@ def remove_evento(event_id: int, user_id: int) -> Dict[str, Any]:
                 detail="Evento no encontrado o no tienes permiso para eliminarlo"
             )
         
-        # Si llegamos aquí, el evento existe y pertenece al usuario
+        
         print(f"✅ Verificación exitosa, procediendo a eliminar evento {event_id}")
         
-        # Realizamos la eliminación
+        
         response = (
             supabase.table('eventos')
             .delete()

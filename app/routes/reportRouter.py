@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, validator, Field
-from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from datetime import datetime
+from typing import List, Dict, Any
 from ..services.utils import payload
 from ..core.database import supabase
 
@@ -50,16 +50,8 @@ async def obtener_reporte(
 ) -> Dict[str, Any]:
     """
     Obtiene el reporte de tiempo trabajado en un rango de fechas para el usuario actual.
-
-    Args:
-        request: ReportRequest con fechas inicio y fin en formato YYYY-MM-DD
-        user_data: Datos del usuario autenticado
-
-    Returns:
-        Dict con status, message, data (eventos) y summary (resumen por proyecto)
     """
     try:
-        # Verificar que tenemos el ID del usuario
         if not user_data or 'id' not in user_data:
             raise HTTPException(status_code=401, detail="Usuario no autenticado")
 
@@ -67,7 +59,7 @@ async def obtener_reporte(
         start_date = datetime.strptime(request.start, "%Y-%m-%d").date()
         end_date = datetime.strptime(request.end, "%Y-%m-%d").date()
 
-        # Consulta filtrada por usuario y fechas
+       
         response = supabase.table("eventos")\
             .select("id, descripcion, duracion, fecha_inicio, fecha_fin, project")\
             .eq("user_id", user_id)\
@@ -83,17 +75,31 @@ async def obtener_reporte(
                 "summary": []
             }
 
-        # Calcular resumen por proyecto
+        
         resumen_proyectos = {}
         for evento in response.data:
             project = evento.get("project")
             duracion = evento.get("duracion", 0)
+
+            
+            project_response = supabase.table("togglProjects")\
+                .select("bill")\
+                .eq("name", project)\
+                .execute()
+
+            if not project_response.data:
+                raise HTTPException(status_code=404, detail=f"Proyecto {project} no encontrado")
+
+            bill = project_response.data[0].get("bill") or 0
+
             if project and isinstance(duracion, (int, float)):
-                resumen_proyectos[project] = resumen_proyectos.get(project, 0) + duracion
+                resumen_proyectos[project] = resumen_proyectos.get(project, {"total_seconds": 0, "total_earned": 0})
+                resumen_proyectos[project]["total_seconds"] += duracion
+                resumen_proyectos[project]["total_earned"] += (duracion / 3600) * bill  
 
         resumen_lista = [
-            {"project": project, "total_seconds": total_seconds}
-            for project, total_seconds in resumen_proyectos.items()
+            {"project": project, "total_seconds": data["total_seconds"], "total_earned": data["total_earned"]}
+            for project, data in resumen_proyectos.items()
         ]
 
         return {
