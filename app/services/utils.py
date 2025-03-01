@@ -25,20 +25,27 @@ pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 def get_current_user(token: str = Depends(oauth2_scheme)):
     """Verifica el JWT y extrae el usuario."""
     try:
+        # Decodificar el token usando SECRET_KEY y ALGORITHM
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        id: str = payload.get("sub")
-        id = int(id)
-        if id is None:
+        user_id = payload.get("sub")
+        
+        # Validar que el ID sea presente y convertible a entero
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Token inválido")
+        try:
+            user_id = int(user_id)
+        except ValueError:
             raise HTTPException(status_code=401, detail="Token inválido")
         
-        response = supabase.table("users").select("*").eq("id", id).execute()
-
+        # Consultar el usuario en la base de datos usando el ID extraído
+        response = supabase.table("users").select("*").eq("id", user_id).execute()
+    
         if not response.data or len(response.data) == 0:
             raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
         return response.data[0]
-
-    except jwt.JWTError:
+    
+    except JWTError:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
 
 def hash_password(password: str) -> str:

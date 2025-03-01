@@ -158,3 +158,73 @@ def remove_evento(event_id: int, user_id: int) -> Dict[str, Any]:
         raise HTTPException(
             status_code=500,
             detail=f"Error inesperado al eliminar el evento: {str(e)}")
+    
+
+def update_event(event_id: int, user_id: int, nueva_fecha_inicio: datetime, nueva_fecha_fin: datetime) -> Dict[str, Any]:
+    """
+    Actualiza la fecha de inicio y la fecha de fin de un evento.
+    
+    Args:
+        event_id: ID del evento a actualizar.
+        user_id: ID del usuario asociado al evento.
+        nueva_fecha_inicio: Nueva fecha de inicio.
+        nueva_fecha_fin: Nueva fecha de fin.
+        
+    Returns:
+        Dict[str, Any]: Datos del evento actualizado.
+        
+    Raises:
+        HTTPException: Si el evento no existe o no pertenece al usuario.
+        ValueError: En caso de errores durante la actualización.
+    """
+    
+    try:
+        print(f"📝 Intentando actualizar fechas para evento {event_id} del usuario {user_id}")
+        
+        # Verificar que el evento exista y pertenezca al usuario
+        verificacion = (
+            supabase.table('eventos')
+            .select("*")
+            .eq("id", event_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        
+        if not verificacion.data:
+            print(f"⚠️ Evento {event_id} no encontrado o no pertenece al usuario {user_id}")
+            raise HTTPException(
+                status_code=404,
+                detail="Evento no encontrado o no tienes permiso para modificarlo"
+            )
+        
+        # Preparar la data actualizada
+        data = {
+            "fecha_inicio": nueva_fecha_inicio.isoformat(),
+            "fecha_fin": nueva_fecha_fin.isoformat()
+        }
+        
+        # Realizar la actualización en la base de datos
+        response = (
+            supabase.table('eventos')
+            .update(data)
+            .eq("id", event_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        
+        if not response.data:
+            print("❌ Error: La actualización no retornó datos")
+            raise ValueError("No se pudo actualizar el evento")
+        
+        print(f"✅ Evento {event_id} actualizado correctamente")
+        return response.data[0]
+        
+    except HTTPException as he:
+        print(f"⚠️ HTTP Exception en actualizar_evento_fechas: {str(he)}")
+        raise he
+    except Exception as e:
+        print(f"❌ Error inesperado en actualizar_evento_fechas: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error inesperado al actualizar el evento: {str(e)}"
+        )

@@ -22,6 +22,10 @@ class ManualEventCreate(BaseModel):
     fecha_inicio: datetime
     fecha_fin: datetime
 
+class EventUpdateDates(BaseModel):
+    fecha_inicio: datetime
+    fecha_fin: datetime
+
 @router.post("/eventos/")
 async def crear_evento(data: EventCreate, token: str = Depends(oauth2_scheme)):
     
@@ -90,3 +94,54 @@ async def eliminar_evento(event_id: int, token: str = Depends(oauth2_scheme)):
 
     response = modelEvent.remove_evento(event_id, user_id)
     return {"status": "success", "message": "Evento eliminado correctamente", "data": response}
+
+@router.put("/{event_id}/dates")
+async def update_event_dates(
+    event_id: int,
+    event_update: EventUpdateDates,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Endpoint para actualizar la fecha de inicio y fecha de fin de un evento.
+    
+    Args:
+        event_id (int): ID del evento a actualizar.
+        event_update (EventUpdateDates): Objeto con las nuevas fechas de inicio y fin.
+        current_user (dict): Usuario autenticado obtenido mediante dependencias.
+        
+    Returns:
+        dict: Datos del evento actualizado.
+        
+    Raises:
+        HTTPException: Si el evento no existe o no pertenece al usuario.
+    """
+    try:
+        updated_event = modelEvent.update_event(
+            event_id=event_id,
+            user_id=current_user.get("id"),
+            nueva_fecha_inicio=event_update.fecha_inicio,
+            nueva_fecha_fin=event_update.fecha_fin
+        )
+        return updated_event
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al actualizar las fechas del evento: {str(e)}"
+        )
+    
+
+
+@router.get("/tiempo_actual")
+async def get_now_date():
+    """
+    Endpoint que devuelve la hora actual en formato ISO.
+    Se usar como un botón en el front end para actualizar cada minuto.
+    """
+    current_time = datetime.utcnow().replace(second=0, microsecond=0)
+    return {
+        "status": "success",
+        "message": "Hora actual obtenida exitosamente",
+        "hora_actual": current_time.isoformat()
+    }
